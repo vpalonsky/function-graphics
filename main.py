@@ -17,14 +17,15 @@ MOVE_ORIGIN_UP = 1
 MOVE_ORIGIN_DOWN = 2
 MOVE_ORIGIN_LEFT = 3
 MOVE_ORIGIN_RIGHT = 4
-f = lambda x : (x**5)/20
-df = lambda x : (x**4)/4
 
 CUBE_CENTER = (W_WIDTH/2, W_HEIGHT/2, 0)
 CUBE_SIDE_L = 100
 ROTATE_X = 1
 ROTATE_Y = 2
 ROTATE_Z = 3
+Mx = lambda alpha : [[1, 0, 0], [0, cos(alpha), -sin(alpha)], [0, sin(alpha), cos(alpha)]]
+My = lambda beta : [[cos(beta), 0, sin(beta)], [0, 1, 0], [-sin(beta), 0, cos(beta)]]
+Mz = lambda theta : [[cos(theta), -sin(theta), 0], [sin(theta), cos(theta), 0], [0, 0, 1]]
 
 pygame.init()
 surface = pygame.display.set_mode((W_WIDTH, W_HEIGHT))
@@ -53,26 +54,22 @@ def draw_axis(surface: Surface, origin):
 			surface.blit(num_text_surface, (origin[0]+10, i))
 
 def draw_function(surface, origin, f, color):
+	points = []
 	actual_point_x = -origin[0]/ZOOM_SCALE
 	actual_point_y = f(actual_point_x)*ZOOM_SCALE+origin[1]
 	for i in range(W_WIDTH+1):
 		x = (i - origin[0])/ZOOM_SCALE
 		y = f(x)
 
-		pygame.draw.line(surface, color, (actual_point_x, actual_point_y), (i, y*ZOOM_SCALE+origin[1]), 3)
+		draw_x = i
+		draw_y = y*ZOOM_SCALE+origin[1]
+		pygame.draw.line(surface, color, (actual_point_x, actual_point_y), (draw_x, draw_y), 3)
 		actual_point_x = i
 		actual_point_y = y*ZOOM_SCALE+origin[1]
+		points.append((draw_x, draw_y, 0))
+	return points
 
-corner1 = (100, 100, 100)
-corner2 = (200, 200, 200)
-sides = []
-d = 1
-
-Mx = lambda alpha : [[1, 0, 0], [0, cos(alpha), -sin(alpha)], [0, sin(alpha), cos(alpha)]]
-My = lambda beta : [[cos(beta), 0, sin(beta)], [0, 1, 0], [-sin(beta), 0, cos(beta)]]
-Mz = lambda theta : [[cos(theta), -sin(theta), 0], [sin(theta), cos(theta), 0], [0, 0, 1]]
-
-def rotate_point(M, point):
+def rotate_point(point, M):
 	new_point = [0, 0, 0]
 	for i in range(len(M)):
 		sum = 0
@@ -81,16 +78,14 @@ def rotate_point(M, point):
 		new_point[i] = sum
 	return (new_point[0], new_point[1], new_point[2])
 
-def rotate_cube(sides, M):
-	for s in range(len(sides)):
-		side = sides[s]
-		for p in range(len(side)):
-			point = side[p]
-			new_point = rotate_point(M, point)
+def rotate_cube(cube_points, M):
+	for p in range(len(cube_points)):
+		point = cube_points[p]
+		new_point = rotate_point(point, M)
 
-			sides[s][p] = new_point
+		cube_points[p] = new_point
 
-def initialize_cube(sides):
+def initialize_cube(cube_points):
 	pos_x = int(CUBE_SIDE_L/2)
 	neg_x = int(-CUBE_SIDE_L/2)
 	pos_y = int(CUBE_SIDE_L/2)
@@ -99,20 +94,20 @@ def initialize_cube(sides):
 	neg_z = int(-CUBE_SIDE_L/2)
 
 	for y in range(neg_y, pos_y+1):
-		sides[0].append((y, pos_x, neg_z))
-		sides[1].append((y, neg_x, neg_z))
-		sides[2].append((y, pos_x, pos_z))
-		sides[3].append((y, neg_x, pos_z))
+		cube_points.append((y, pos_x, neg_z))
+		cube_points.append((y, neg_x, neg_z))
+		cube_points.append((y, pos_x, pos_z))
+		cube_points.append((y, neg_x, pos_z))
 	for x in range(neg_x, pos_x+1):
-		sides[0].append((neg_y, x, neg_z))
-		sides[1].append((pos_y, x, neg_z))
-		sides[2].append((neg_y, x, pos_z))
-		sides[3].append((pos_y, x, pos_z))
+		cube_points.append((neg_y, x, neg_z))
+		cube_points.append((pos_y, x, neg_z))
+		cube_points.append((neg_y, x, pos_z))
+		cube_points.append((pos_y, x, pos_z))
 	for z in range(neg_z, pos_z+1):
-		sides[0].append((neg_y, pos_x, z))
-		sides[1].append((pos_y, pos_x, z))
-		sides[2].append((neg_y, neg_x, z))
-		sides[3].append((pos_y, neg_x, z))
+		cube_points.append((neg_y, pos_x, z))
+		cube_points.append((pos_y, pos_x, z))
+		cube_points.append((neg_y, neg_x, z))
+		cube_points.append((pos_y, neg_x, z))
 
 def main():
 	global ZOOM_SCALE
@@ -121,8 +116,12 @@ def main():
 	zoom = None
 	rotate = None
 
-	sides = [[] for _ in range(12)]
-	initialize_cube(sides)
+	f = lambda x : (x**5)/20
+	df = lambda x : (x**4)/4
+	cube_points = []
+	function_points = []
+
+	initialize_cube(cube_points)
 
 	while running:
 		for event in pygame.event.get():
@@ -162,8 +161,8 @@ def main():
 
 		surface.fill(BACKGROUND_COLOR)
 
-		# draw_axis(surface, origin)
-		# draw_function(surface, origin, f, GRAPHICS_COLOR)
+		draw_axis(surface, origin)
+		function_points = draw_function(surface, origin, f, GRAPHICS_COLOR)
 		# draw_function(surface, origin, df, "yellow")
 
 		if move_origin == MOVE_ORIGIN_UP:
@@ -179,23 +178,27 @@ def main():
 		if (zoom == ZOOM_UP and ZOOM_SCALE>10): ZOOM_SCALE-=10
 
 		if rotate == ROTATE_X:
-			rotate_cube(sides, Mx(1/(2*pi)))
+			rotate_cube(cube_points, Mx(1/(2*pi)))
 		if rotate == -ROTATE_X:
-			rotate_cube(sides, Mx(-1/(2*pi)))
+			rotate_cube(cube_points, Mx(-1/(2*pi)))
 		if rotate == ROTATE_Y:
-			rotate_cube(sides, My(1/(2*pi)))
+			rotate_cube(cube_points, My(1/(2*pi)))
 		if rotate == -ROTATE_Y:
-			rotate_cube(sides, My(-1/(2*pi)))
+			rotate_cube(cube_points, My(-1/(2*pi)))
 		if rotate == ROTATE_Z:
-			rotate_cube(sides, Mz(1/(2*pi)))
+			rotate_cube(cube_points, Mz(1/(2*pi)))
 		if rotate == -ROTATE_Z:
-			rotate_cube(sides, Mz(-1/(2*pi)))
+			rotate_cube(cube_points, Mz(-1/(2*pi)))
 
-		for side in sides:
-			for point in side:
-				x = point[0]+CUBE_CENTER[0]
-				y = point[1]+CUBE_CENTER[1]
-				pygame.draw.circle(surface, GRAPHICS_COLOR, (x, y), 1)
+		# for side in sides:
+		# 	for point in side:
+		# 		x = point[0]+CUBE_CENTER[0]
+		# 		y = point[1]+CUBE_CENTER[1]
+		# 		pygame.draw.circle(surface, GRAPHICS_COLOR, (x, y), 1)
+		for point in cube_points	:
+			x = point[0]+CUBE_CENTER[0]
+			y = point[1]+CUBE_CENTER[1]
+			pygame.draw.circle(surface, GRAPHICS_COLOR, (x, y), 1)
 
 		pygame.display.flip()
 

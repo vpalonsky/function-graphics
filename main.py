@@ -1,7 +1,6 @@
 from pygame import Surface
 import pygame
 from math import cos, sin, pi
-import copy
 
 W_WIDTH = 900
 W_HEIGHT = 600
@@ -28,8 +27,8 @@ Mx = lambda alpha : [[1, 0, 0], [0, cos(alpha), -sin(alpha)], [0, sin(alpha), co
 My = lambda beta : [[cos(beta), 0, sin(beta)], [0, 1, 0], [-sin(beta), 0, cos(beta)]]
 Mz = lambda theta : [[cos(theta), -sin(theta), 0], [sin(theta), cos(theta), 0], [0, 0, 1]]
 
-CAMERA_POS = [0, 0, -50]
 CAMERA_ANGLE = [0, 0, 0]
+CAMERA_POS = [0, 0, -50]
 DISPLAY_SURFACE_POS = [0, 0, 100]
 Mx_ = lambda alpha : [[1, 0, 0], [0, cos(alpha), sin(alpha)], [0, -sin(alpha), cos(alpha)]]
 My_ = lambda beta : [[cos(beta), 0, -sin(beta)], [0, 1, 0], [sin(beta), 0, cos(beta)]]
@@ -132,10 +131,10 @@ def main():
 
 	f = lambda x : (x**5)/20
 	df = lambda x : (x**4)/4
-	g = lambda x : x
+	g = lambda x : x*x*x
 	cube_points = []
 	function_points = []
-	function_points = draw_function(origin, f)
+	function_points = draw_function(origin, g)
 	initialize_cube(cube_points)
 
 	while running:
@@ -181,47 +180,57 @@ def main():
 
 		if move_origin == MOVE_ORIGIN_UP:
 			# origin[1] -= ORIGIN_VELOCITY
-			CAMERA_POS[2] -= 10
+			CAMERA_POS[2] -= 5*cos(2*pi-CAMERA_ANGLE[1])
+			CAMERA_POS[0] -= 5*sin(2*pi-CAMERA_ANGLE[1])
 		if move_origin == MOVE_ORIGIN_DOWN:
 			# origin[1] += ORIGIN_VELOCITY
-			CAMERA_POS[2] += 10
+			CAMERA_POS[2] += 5*cos(2*pi-CAMERA_ANGLE[1])
+			CAMERA_POS[0] += 5*sin(2*pi-CAMERA_ANGLE[1])
 		if move_origin == MOVE_ORIGIN_LEFT:
-			CAMERA_POS[0] += 10
+			CAMERA_POS[2] -= 5*sin(2*pi-CAMERA_ANGLE[1])
+			CAMERA_POS[0] += 5*cos(2*pi-CAMERA_ANGLE[1])
 			# origin[0] -= ORIGIN_VELOCITY
 		if move_origin == MOVE_ORIGIN_RIGHT:
-			CAMERA_POS[0] -= 10
+			CAMERA_POS[2] += 5*sin(2*pi-CAMERA_ANGLE[1])
+			CAMERA_POS[0] -= 5*cos(2*pi-CAMERA_ANGLE[1])
 			# origin[0] += ORIGIN_VELOCITY
 
 		if (zoom == ZOOM_DOWN): ZOOM_SCALE+=10
 		if (zoom == ZOOM_UP and ZOOM_SCALE>10): ZOOM_SCALE-=10
 
 		if rotate == ROTATE_X:
-			rotate_figure(cube_points, Mx(1/(2*pi)))
+			# rotate_figure(cube_points, Mx(1/(2*pi)))
+			CAMERA_ANGLE[0]+=pi/180
 		if rotate == -ROTATE_X:
-			rotate_figure(cube_points, Mx(-1/(2*pi)))
+			# rotate_figure(cube_points, Mx(-1/(2*pi)))
+			CAMERA_ANGLE[0]-=pi/180
 		if rotate == ROTATE_Y:
-			rotate_figure(cube_points, My(1/(2*pi)))
+			# rotate_figure(cube_points, My(1/(2*pi)))
+			CAMERA_ANGLE[1]+=pi/180
 		if rotate == -ROTATE_Y:
-			rotate_figure(cube_points, My(-1/(2*pi)))
+			# rotate_figure(cube_points, My(-1/(2*pi)))
+			CAMERA_ANGLE[1]-=pi/180
 		if rotate == ROTATE_Z:
-			rotate_figure(cube_points, Mz(1/(2*pi)))
+			# rotate_figure(cube_points, Mz(1/(2*pi)))
+			CAMERA_ANGLE[2]+=pi/180
 		if rotate == -ROTATE_Z:
-			rotate_figure(cube_points, Mz(-1/(2*pi)))
+			# rotate_figure(cube_points, Mz(-1/(2*pi)))
+			CAMERA_ANGLE[2]-=pi/180
 
 		new_cube_points = [cube_point for cube_point in cube_points]
 		apply_perspective(new_cube_points)
-		new_function_points = [function_point for function_point in function_points]
-		apply_perspective(new_function_points)
+		# new_function_points = [function_point for function_point in function_points]
+		# apply_perspective(new_function_points)
 
 		for point in new_cube_points:
 			x = point[0]+CUBE_CENTER[0]
 			y = point[1]+CUBE_CENTER[1]
 			pygame.draw.circle(surface, GRAPHICS_COLOR, (x, y), 1)
 
-		for point in new_function_points:
-			x = point[0]+origin[0]
-			y = point[1]+origin[1]
-			pygame.draw.circle(surface, GRAPHICS_COLOR, (x, y), 1)
+		# for point in new_function_points:
+		# 	x = point[0]+origin[0]
+		# 	y = point[1]+origin[1]
+		# 	pygame.draw.circle(surface, GRAPHICS_COLOR, (x, y), 1)
 
 		pygame.display.flip()
 
